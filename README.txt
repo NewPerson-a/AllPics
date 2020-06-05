@@ -10,7 +10,7 @@ H - turn on/of display of ammount of pixel changes per second
 Q - quit
 
 Note: you will need a terminal or console to run this application. This will be changed in future.
-Second note: this program shold work under any desktop platform, but was only tested under debian linux
+Second note: this program should work under any desktop platform, but was only tested under debian linux
 
 ALGORITM
 Each pixel consists of five variables: x-position, y-position, red, green, blue. At first we increase the red value a bit. Once it reaches 255 we set it back to zero and increase the green value. Once green reaches 255, we set it to 0 and increase blue value. And when it reaches 255, we set it to 0 and increase the red value of the next pixel. And so on. The program finishes when the number of next pixel is more than amount of pixels.

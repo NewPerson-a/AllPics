@@ -3,12 +3,13 @@ AllPics is a simple SDL-based (https://libsdl.org/) program that can show you ev
 
 HOW TO USE
 SPACE ‒ pause/unpause;
+Q ‒ quit;
 S ‒ save;
 L ‒ load;
-U ‒ turn on/off window update. Works much faster when turned off. Actually it is recommended to keep it off most of time and turn on only if you want to see current progress;
-H ‒ turn on/of display of amount of pixel changes per second
-Q ‒ quit
-A ‒ adjust amount of steps per color. The higher this number is the more detailed image can be generated and the slower program works.
+H ‒ turn on/of display of amount of pixel changes per second, default ‒ off;
+U ‒ turn on/off window update. Works much faster when turned off. Actually it is recommended to keep it off most of time and turn on only if you want to see current progress, default ‒ on;
+A ‒ adjust amount of steps per color. The higher this number is the more detailed image can be generated and the slower program works;
+C ‒ turn on/off autosave, default ‒ off;
 
 
 Note: you will need a terminal or a console to run this application. This will be changed in future.

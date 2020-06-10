@@ -1,19 +1,24 @@
-/*
-space to pause
-Q to quit
-S to save
-L to load
-H to display ammount of operations per second
-U to turn on/off screen update. When turned off works much faster
-A to adjust iterations per color. The higher the number the more detailed image can be generated, but speed drops rapidly
-
-Known issue: doesn't quit when paused
-*/
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include "SDL.h"
 using namespace std;
+
+
+
+bool file_exists (string path)
+{
+  fstream f;
+  f.open (path, ios::in);
+  if (f.is_open ())
+  {
+    f.close ();
+    return true;
+  } else
+  {
+    return false;
+  }
+}
 
 
 
@@ -55,8 +60,9 @@ void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
 
 int main (int argc, char** argv)
 {
-  int x = 0, y = 0, counter = 0, A = 0, it_p_color = 0, how_fast_count = 0;
-  bool stop = false, pause = false, update = true, how_fast = false, debug = false;
+  int x = 0, y = 0, counter = 0, it_p_color = 0, how_fast_count = 0, autosave_counter = 0;
+  bool stop = false, pause = false, update = true, how_fast = false, debug = false, autosave = false, autosave_overwrite = false, overwrite = false;
+  float step = 0.0, loading_var = 0.0;
   string filename;
   fstream f, debug_f;
 
@@ -70,6 +76,15 @@ int main (int argc, char** argv)
       debug = false;
     }
   }
+
+  cout << "SPACE to pause;" << endl;
+  cout << "Q to quit;" << endl;
+  cout << "S to save;" << endl;
+  cout << "L to load;" << endl;
+  cout << "H to display ammount of operations per second, default ‒ off;" << endl;
+  cout << "U to turn on/off screen update. When turned off works much faster, default ‒ on;" << endl;
+  cout << "A to adjust iterations per color." << endl;
+  cout << "C to enable/disable autosave. It saves progress each minute into file \"AllPics.AUTOSAVE\", default ‒ off;" << endl << endl;
 
   cout << "X = ";
   cin >> x;
@@ -89,19 +104,19 @@ int main (int argc, char** argv)
     cout << "Entered number is less than 1. It will be set to 1." << endl;
     it_p_color = 1;
   }
-  float step = 255.0 / (it_p_color * 1.0);
+  step = 255.0 / (it_p_color * 1.0);
 
   int xy = x * y;
   vector <float> r (xy, 0.0);
   vector <float> g (xy, 0.0);
   vector <float> b (xy, 0.0);
 
-  Uint32 color = 0, begin_tick = 0;
+  Uint32 color = 0, begin_tick = 0, autosave_tick = 0;
   SDL_Init (SDL_INIT_VIDEO);
   SDL_Event Event;
   SDL_KeyboardEvent KbrdEvent;
   SDL_Window* MainWindow = SDL_CreateWindow (
-                                            "AllPics V3.2",
+                                            "AllPics V3.3",
                                             SDL_WINDOWPOS_CENTERED,
                                             SDL_WINDOWPOS_CENTERED,
                                             x,
@@ -135,6 +150,7 @@ int main (int argc, char** argv)
         cout << "Quitting... ";
       }
 
+
       if (KbrdEvent.type == SDL_KEYDOWN)
       {
         switch (KbrdEvent.keysym.scancode)
@@ -159,35 +175,51 @@ int main (int argc, char** argv)
             cout << "Enter save file name (no spaces allowed): ";
             cin >> filename;
 
-            f.open (filename, ios::out);
-            if (f.is_open ())
+            if (file_exists (filename))
             {
-              f << x << ' ' << y << ' ' << counter << endl;
-              for (int i = 0; i < xy; i++)
-              {
-                f << r [i] << ' ';
-              }
-
-              f << endl;
-
-              for (int i = 0; i < xy; i++)
-              {
-                f << g [i] << ' ';
-              }
-
-              f << endl;
-
-              for (int i = 0; i < xy; i++)
-              {
-                f << b [i] << ' ';
-              }
-              f << endl << it_p_color << endl;
-              cout << "Saved." << endl;
+              cout << "File with this name already exist. Overwrite it ('0' for no; '1' for yes)? ";
+              cin >> overwrite;
             } else
             {
-              cout << "Error: couldn't open file." << endl;
+              overwrite = true;
             }
-            f.close ();
+
+            if (overwrite)
+            {
+              overwrite = false;
+              f.open (filename, ios::out);
+              if (f.is_open ())
+              {
+                f << x << ' ' << y << ' ' << counter << endl;
+                for (int i = 0; i < xy; i++)
+                {
+                  f << r [i] << ' ';
+                }
+
+                f << endl;
+
+                for (int i = 0; i < xy; i++)
+                {
+                  f << g [i] << ' ';
+                }
+
+                f << endl;
+
+                for (int i = 0; i < xy; i++)
+                {
+                  f << b [i] << ' ';
+                }
+                f << endl << it_p_color << endl;
+                cout << "Saved." << endl;
+              } else
+              {
+                cout << "Error: couldn't open file." << endl;
+              }
+              f.close ();
+            } else
+            {
+              cout << "Saving cancelled." << endl;
+            }
             break;
 
 
@@ -212,26 +244,26 @@ int main (int argc, char** argv)
                 f >> counter;
                 for (int i = 0; i < xy; i++)
                 {
-                  f >> A;
-                  r.push_back (A);
+                  f >> loading_var;
+                  r.push_back (loading_var);
                 }
 
                 for (int i = 0; i < xy; i++)
                 {
-                  f >> A;
-                  g.push_back (A);
+                  f >> loading_var;
+                  g.push_back (loading_var);
                 }
 
                 for (int i = 0; i < xy; i++)
                 {
-                  f >> A;
-                  b.push_back (A);
+                  f >> loading_var;
+                  b.push_back (loading_var);
                 }
                 f >> it_p_color;
                 f.close ();
                 step = 255.0 / (it_p_color * 1.0);
                 MainWindow = SDL_CreateWindow (
-                                                "AllPics V3.2",
+                                                "AllPics V3.3",
                                                 SDL_WINDOWPOS_CENTERED,
                                                 SDL_WINDOWPOS_CENTERED,
                                                 x,
@@ -300,6 +332,32 @@ int main (int argc, char** argv)
               }
               step = 255.0 / (it_p_color * 1.0);
               break;
+
+
+
+            case SDL_SCANCODE_C:
+              autosave = !autosave;
+              if (autosave)
+              {
+                if (file_exists ("AllPics.AUTOSAVE") && !autosave_overwrite)
+                {
+                  cout << "File \"AllPics.AUTOSAVE\" already exist. Overwrite it ('0' for no; '1' for yes)? ";
+                  cin >> autosave_overwrite;
+                  if (!autosave_overwrite)
+                  {
+                    autosave = false;
+                    cout << "Autosave is not enabled." << endl;
+                  }
+                } else
+                {
+                  autosave_overwrite = true;
+                  cout << "Autosave enabled." << endl;
+                }
+              } else
+              {
+                autosave_tick = 0;
+                cout << "Autosave disabled." << endl;
+              }
         }
       }
 
@@ -310,6 +368,43 @@ int main (int argc, char** argv)
       goto pause_place;
     }
 
+    if (autosave)
+    {
+      if ((SDL_GetTicks () - autosave_tick) >= 60000)
+      {
+        cout << "Autosaving... ";
+        f.open ("AllPics.AUTOSAVE", ios::out);
+        if (f.is_open ())
+        {
+          autosave_tick = SDL_GetTicks ();
+          f << x << ' ' << y << ' ' << counter << endl;
+          for (int i = 0; i < xy; i++)
+          {
+            f << r [i] << ' ';
+          }
+
+          f << endl;
+
+          for (int i = 0; i < xy; i++)
+          {
+            f << g [i] << ' ';
+          }
+
+          f << endl;
+
+          for (int i = 0; i < xy; i++)
+          {
+            f << b [i] << ' ';
+          }
+          f << endl << it_p_color << endl;
+          cout << "done." << endl;
+        } else
+        {
+          cout << "Error: couldn't open autosave file." << endl;
+        }
+        f.close ();
+      }
+    }
 
 
     if (counter >= xy && !stop)
@@ -346,8 +441,7 @@ int main (int argc, char** argv)
       }
     }
 
-      int R = r[counter], G = g[counter], B = b[counter];
-      color = SDL_MapRGB (Surface->format, R, G, B);
+      color = SDL_MapRGB (Surface->format, int (r[counter]), int (g[counter]), int (b[counter]));
       SDL_LockSurface (Surface);
       putpixel (Surface, (counter % x), (counter / x), color);
       SDL_UnlockSurface (Surface);
@@ -398,36 +492,6 @@ int main (int argc, char** argv)
 
   cout << "Program worked for";
 
-  /*
-  days = worked_for / 8640000;
-  if (days)
-  {
-    cout << ' ' << days << 'd';
-    worked_for /= 8640000;
-  }
-
-  hours = worked_for / 3600000;
-  if (hours)
-  {
-    cout << ' ' << hours << 'h';
-    worked_for /= 3600000;
-  }
-
-  minutes = worked_for / 60000;
-  if (minutes)
-  {
-    cout << ' ' << minutes << 'm';
-    worked_for /= 60000;
-  }
-
-  seconds = worked_for / 1000;
-  if (seconds)
-  {
-    cout << ' ' << seconds << 's' << endl;
-  } else
-  {
-    cout << endl;
-  }*/
 
   seconds = worked_for / 1000;
   if (seconds > 59)

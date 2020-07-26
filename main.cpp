@@ -1,496 +1,486 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
 #include "SDL.h"
-using namespace std;
-
-
-
-bool file_exists (string path)
-{
-  fstream f;
-  f.open (path, ios::in);
-  if (f.is_open ())
-  {
-    f.close ();
-    return true;
-  } else
-  {
-    return false;
-  }
-}
-
-
-
-//got this function from https://sdl.beuc.net/sdl.wiki/Pixel_Access
-void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
-{
-    int bpp = surface->format->BytesPerPixel;
-    /* Here p is the address to the pixel we want to set */
-    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
-
-    switch(bpp) {
-    case 1:
-        *p = pixel;
-        break;
-
-    case 2:
-        *(Uint16 *)p = pixel;
-        break;
-
-    case 3:
-        if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-            p[0] = (pixel >> 16) & 0xff;
-            p[1] = (pixel >> 8) & 0xff;
-            p[2] = pixel & 0xff;
-        } else {
-            p[0] = pixel & 0xff;
-            p[1] = (pixel >> 8) & 0xff;
-            p[2] = (pixel >> 16) & 0xff;
-        }
-        break;
-
-    case 4:
-        *(Uint32 *)p = pixel;
-        break;
-    }
-}
+#include "args.h"
+#include "save_load.h"
 
 
 
 int main (int argc, char** argv)
 {
-  int x = 0, y = 0, counter = 0, it_p_color = 0, how_fast_count = 0, autosave_counter = 0;
-  bool stop = false, pause = false, update = true, how_fast = false, debug = false, autosave = false, autosave_overwrite = false, overwrite = false;
-  float step = 0.0, loading_var = 0.0;
-  string filename;
-  fstream f, debug_f;
+  int x = 0, y = 0, xy = 0,
+  counter = 0, it_p_color = 0, how_fast_count = 0, autosave_counter = 0;
+
+  bool stop = false, pause = false, update = true, how_fast = false,
+  autosave = false, autosave_overwrite = false, mlock = false,
+  s = false, l = false;
+
+  float step = 0.0, *r = NULL, *g = NULL, *b = NULL;
+
+  std::string auto_path = "AllPics.AUTOSAVE", filename, choise;
+
+
 
   if (argc > 1)
   {
-    debug = true;
-    debug_f.open ("DEBUGFILE.debug", ios::out);
-    if (!debug_f.is_open ())
+    if (get_t_input (argc, argv, &filename, &l, &autosave, &auto_path))
     {
-      cout << "Failed to open debug file. Continuing without debug." << endl;
-      debug = false;
+      return 0;
     }
+
+
   }
 
-  cout << "SPACE to pause;" << endl;
-  cout << "Q to quit;" << endl;
-  cout << "S to save;" << endl;
-  cout << "L to load;" << endl;
-  cout << "H to display ammount of operations per second, default ‒ off;" << endl;
-  cout << "U to turn on/off screen update. When turned off works much faster, default ‒ on;" << endl;
-  cout << "A to adjust iterations per color." << endl;
-  cout << "C to enable/disable autosave. It saves progress each minute into file \"AllPics.AUTOSAVE\", default ‒ off;" << endl << endl;
+  char* ch = new char ('\0');
 
-  cout << "X = ";
-  cin >> x;
-  cout << "Y = ";
-  cin >> y;
-  cout << endl << "The higher this number the higer quality of the image and the slower its generation;" << endl;
-  cout << "Iterations per color (min: 1; max: 255): ";
-  cin >> it_p_color;
-  if (it_p_color > 255)
+  if (l)
   {
-    cout << "Entered number is greater than 255. It will be set to 255." << endl;
-    it_p_color = 255;
+    l = false;
+    std::cout << "Loading...\n";
+    *ch = load
+    (
+      filename.c_str (),
+      &x,
+      &y,
+      &xy,
+      &counter,
+      &it_p_color,
+      &step,
+      &r,
+      &g,
+      &b
+    );
+
+    switch (*ch)
+    {
+      case 'r':
+        std::cout << "This is not an AllPics save file or it is corrupted.\n";
+        break;
+
+
+      case 's':
+        std::cout << "File is corrupted.\n";
+        break;
+
+
+      case 'f':
+        std::cout << "Couldn't open file.\n";
+        break;
+
+
+      case 'n':        std::cout << "Loading succsessful\n";
+        break;
+    }
+
   }
 
-  if (it_p_color < 1)
+
+  if (*ch != 'n')
   {
-    cout << "Entered number is less than 1. It will be set to 1." << endl;
-    it_p_color = 1;
-  }
-  step = 255.0 / (it_p_color * 1.0);
+    do
+    {
+      std::cout << "X = ";
+      getline (std::cin, choise);
 
-  int xy = x * y;
-  vector <float> r (xy, 0.0);
-  vector <float> g (xy, 0.0);
-  vector <float> b (xy, 0.0);
+    } while (!str_to_int (choise, &x));
+
+
+    do
+    {
+      std::cout << "Y = ";
+      getline (std::cin, choise);
+
+    } while (!str_to_int (choise, &y));
+
+    xy = x * y;
+
+
+    std::cout << "\nThe higher this number is the higer quality of the image and the slower its generation;\n";
+
+    do
+    {
+      std::cout << "Iterations per color (min: 1; max: 255): ";
+      getline (std::cin, choise);
+
+    } while (!str_to_int (choise, &it_p_color));
+
+    if (it_p_color > 255)
+    {
+      std::cout << "Entered number is greater than 255. It will be set to 255.\n";
+      it_p_color = 255;
+    }
+
+    if (it_p_color < 1)
+    {
+      std::cout << "Entered number is less than 1. It will be set to 1.\n";
+      it_p_color = 1;
+    }
+    step = 255.0 / it_p_color;
+
+
+
+    r = (float*) calloc (xy, sizeof (float));
+    g = (float*) calloc (xy, sizeof (float));
+    b = (float*) calloc (xy, sizeof (float));
+
+  }
+
 
   Uint32 color = 0, begin_tick = 0, autosave_tick = 0;
   SDL_Init (SDL_INIT_VIDEO);
-  SDL_Event Event;
-  SDL_KeyboardEvent KbrdEvent;
-  SDL_Window* MainWindow = SDL_CreateWindow (
-                                            "AllPics V3.3",
-                                            SDL_WINDOWPOS_CENTERED,
-                                            SDL_WINDOWPOS_CENTERED,
-                                            x,
-                                            y,
-                                            0
-                                            );
+
+  SDL_Window* MainWindow =
+  SDL_CreateWindow
+  (
+    "AllPics V3.4",
+    SDL_WINDOWPOS_CENTERED,
+    SDL_WINDOWPOS_CENTERED,
+    x,
+    y,
+    0
+  );
   SDL_Surface* Surface = SDL_GetWindowSurface (MainWindow);
+  mlock = SDL_MUSTLOCK (Surface);
+
+
+  if (*ch == 'n')
+  {
+    if (mlock)
+    {
+      SDL_LockSurface (Surface);
+    }
+
+
+    for (int i = 0; i < xy; i++)
+    {
+      color = SDL_MapRGB (Surface->format, (int) r[i], (int) g[i], (int) b[i]);
+      putpixel (Surface, (i % x), (i / x), color);
+    }
+
+
+    if (mlock)
+    {
+      SDL_UnlockSurface (Surface);
+    }
+  }
+
+  delete ch;
   begin_tick = SDL_GetTicks ();
+
+
+
+
   while (!stop)
   {
-    if (how_fast && (SDL_GetTicks () - begin_tick) >= 1000)
-    {
-      cout << "Iterations per last second: " << how_fast_count << endl;
-      begin_tick = SDL_GetTicks ();
-      how_fast_count = 0;
-    }
-    if (how_fast && (SDL_GetTicks () - begin_tick) < 1000)
-    {
-      how_fast_count += 1;
-    }
+    handle_events
+    (
+      &stop,
+      &pause,
+      &s,
+      &l,
+      &update,
+      &how_fast,
+      &autosave,
+      &autosave_overwrite,
+      &auto_path,
+      &filename,
+      &it_p_color,
+      &step
+    );
 
-    pause_place:
-    while (SDL_PollEvent (&Event))
-    {
-      KbrdEvent = Event.key;
 
-      if (Event.type == SDL_QUIT || (KbrdEvent.keysym.scancode == SDL_SCANCODE_Q && KbrdEvent.type == SDL_KEYDOWN))
+    if (l)
+    {
+      l = false;
+
+
+      std::cout << "Loading... ";
+      fflush (stdout);
+
+      char check = load
+      (
+        filename.c_str (),
+        &x,
+        &y,
+        &xy,
+        &counter,
+        &it_p_color,
+        &step,
+        &r,
+        &g,
+        &b
+      );
+
+
+      switch (check)
       {
-        program_end:
-        stop = true;
-        cout << "Quitting... ";
+        case 'r':
+          std::cout << "This is not an AllPics save file or it is corrupted.\n";
+          break;
+
+
+        case 's':
+          std::cout << "File is corrupted.\n";
+          break;
+
+
+        case 'f':
+          std::cout << "Couldn't open file.\n";
+          break;
+
+
+        case 'a':
+          std::cout << "Reallocation error. Possible reason: insufficient RAM.\nThis error is critical. Exiting... ";
+          stop = true;
+          free (r);
+          free (g);
+          free (b);
+          break;
+
+
+        case 'n':
+
+
+          SDL_DestroyWindow (MainWindow);
+
+
+          MainWindow =
+          SDL_CreateWindow
+          (
+            "AllPics V3.4",
+            SDL_WINDOWPOS_CENTERED,
+            SDL_WINDOWPOS_CENTERED,
+            x,
+            y,
+            0
+          );
+
+
+
+          if (MainWindow == NULL)
+          {
+            std::cout << "Critical error while creating window: " << SDL_GetError () << " Exiting... ";
+            return 0;
+          }
+
+
+          Surface = SDL_GetWindowSurface (MainWindow);
+          if (Surface == NULL)
+          {
+            std::cout << "Critical error while getting window surface: " << SDL_GetError () << " Exiting... ";
+            return 0;
+          }
+
+
+
+          mlock = SDL_MUSTLOCK (Surface);
+
+          if (mlock)
+          {
+            SDL_LockSurface (Surface);
+          }
+
+
+          for (int i = 0; i < xy; i++)
+          {
+            color = SDL_MapRGB (Surface->format, (int) r[i], (int) g[i], (int) b[i]);
+            putpixel (Surface, (i % x), (i / x), color);
+          }
+
+
+          if (mlock)
+          {
+            SDL_UnlockSurface (Surface);
+          }
+
+          SDL_UpdateWindowSurface (MainWindow);
+          pause = true;
+          std::cout << "Loading succsessful. Program paused.\n";
+          break;
       }
 
-
-      if (KbrdEvent.type == SDL_KEYDOWN)
-      {
-        switch (KbrdEvent.keysym.scancode)
-        {
-          case SDL_SCANCODE_SPACE:
-            pause = !pause;
-            if (pause)
-            {
-              cout << "Paused." << endl;
-            } else
-            {
-              cout << "Unpaused." << endl;
-            }
-            break;
-
-
-
-//||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-//        SAVING
-          case SDL_SCANCODE_S:
-            cout << "Saving... " << endl;
-            cout << "Enter save file name (no spaces allowed): ";
-            cin >> filename;
-
-            if (file_exists (filename))
-            {
-              cout << "File with this name already exist. Overwrite it ('0' for no; '1' for yes)? ";
-              cin >> overwrite;
-            } else
-            {
-              overwrite = true;
-            }
-
-            if (overwrite)
-            {
-              overwrite = false;
-              f.open (filename, ios::out);
-              if (f.is_open ())
-              {
-                f << x << ' ' << y << ' ' << counter << endl;
-                for (int i = 0; i < xy; i++)
-                {
-                  f << r [i] << ' ';
-                }
-
-                f << endl;
-
-                for (int i = 0; i < xy; i++)
-                {
-                  f << g [i] << ' ';
-                }
-
-                f << endl;
-
-                for (int i = 0; i < xy; i++)
-                {
-                  f << b [i] << ' ';
-                }
-                f << endl << it_p_color << endl;
-                cout << "Saved." << endl;
-              } else
-              {
-                cout << "Error: couldn't open file." << endl;
-              }
-              f.close ();
-            } else
-            {
-              cout << "Saving cancelled." << endl;
-            }
-            break;
-
-
-
-//||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-//          LOADING
-            case SDL_SCANCODE_L:
-              cout << "Loading... " << endl;
-              cout << "Enter save file name (no spaces allowed): ";
-              cin >> filename;
-
-              f.open (filename, ios::in);
-              if (f.is_open ())
-              {
-                r.resize (0);
-                g.resize (0);
-                b.resize (0);
-                SDL_DestroyWindow (MainWindow);
-                f >> x;
-                f >> y;
-                xy = x * y;
-                f >> counter;
-                for (int i = 0; i < xy; i++)
-                {
-                  f >> loading_var;
-                  r.push_back (loading_var);
-                }
-
-                for (int i = 0; i < xy; i++)
-                {
-                  f >> loading_var;
-                  g.push_back (loading_var);
-                }
-
-                for (int i = 0; i < xy; i++)
-                {
-                  f >> loading_var;
-                  b.push_back (loading_var);
-                }
-                f >> it_p_color;
-                f.close ();
-                step = 255.0 / (it_p_color * 1.0);
-                MainWindow = SDL_CreateWindow (
-                                                "AllPics V3.3",
-                                                SDL_WINDOWPOS_CENTERED,
-                                                SDL_WINDOWPOS_CENTERED,
-                                                x,
-                                                y,
-                                                0
-                                                );
-                Surface = SDL_GetWindowSurface (MainWindow);
-                SDL_LockSurface (Surface);
-                for (int i = 0; i < xy; i++)
-                {
-                  color = SDL_MapRGB (Surface -> format, r[i], g[i], b[i]);
-                  putpixel (Surface, (i % x), (i / x), color);
-                }
-                SDL_UnlockSurface (Surface);
-                SDL_UpdateWindowSurface (MainWindow);
-
-                pause = true;
-                cout << "Loaded and paused." << endl;
-              } else
-              {
-                cout << "Error: couldn't open file." << endl;
-              }
-              break;
-
-
-
-            case SDL_SCANCODE_U:
-              update = !update;
-              if (update)
-              {
-                cout << "Screen update enabled." << endl;
-              } else
-              {
-                cout << "Screen update disabled." << endl;
-              }
-              break;
-
-
-
-            case SDL_SCANCODE_H:
-              how_fast = !how_fast;
-              if (how_fast)
-              {
-                cout << "Delay counter enabled." << endl;
-              } else
-              {
-                cout << "Delay counter disabled." << endl;
-              }
-              break;
-
-
-
-            case SDL_SCANCODE_A:
-              cout << "Iterations per color (min: 1; max: 255): ";
-              cin >> it_p_color;
-              if (it_p_color > 255)
-              {
-                cout << "Entered number is greater than 255. It will be set to 255." << endl;
-                it_p_color = 255;
-              }
-
-              if (it_p_color < 1)
-              {
-                cout << "Entered number is less than 1. It will be set to 1." << endl;
-                it_p_color = 1;
-              }
-              step = 255.0 / (it_p_color * 1.0);
-              break;
-
-
-
-            case SDL_SCANCODE_C:
-              autosave = !autosave;
-              if (autosave)
-              {
-                if (file_exists ("AllPics.AUTOSAVE") && !autosave_overwrite)
-                {
-                  cout << "File \"AllPics.AUTOSAVE\" already exist. Overwrite it ('0' for no; '1' for yes)? ";
-                  cin >> autosave_overwrite;
-                  if (!autosave_overwrite)
-                  {
-                    autosave = false;
-                    cout << "Autosave is not enabled." << endl;
-                  }
-                } else
-                {
-                  autosave_overwrite = true;
-                  cout << "Autosave enabled." << endl;
-                }
-              } else
-              {
-                autosave_tick = 0;
-                cout << "Autosave disabled." << endl;
-              }
-        }
-      }
-
+      //std::cout << "done.\n";
     }
+
+
+
+
+
+    if (s)
+    {
+      s = false;
+      std::cout << "Saving... ";
+      fflush (stdout);
+
+      switch
+      (
+        save
+        (
+          filename.c_str (),
+          x,
+          y,
+          xy,
+          counter,
+          it_p_color,
+          r,
+          g,
+          b
+        )
+      )
+      {
+        case 'f':
+          std::cout << "Error: couldn't open file.\n";
+          break;
+
+
+        case 'n':
+          std::cout << "done.\n";
+          break;
+      }
+    }
+
+
+
 
     if (pause)
     {
-      goto pause_place;
-    }
+      SDL_Delay (100);
 
-    if (autosave)
-    {
-      if ((SDL_GetTicks () - autosave_tick) >= 60000)
-      {
-        cout << "Autosaving... ";
-        f.open ("AllPics.AUTOSAVE", ios::out);
-        if (f.is_open ())
-        {
-          autosave_tick = SDL_GetTicks ();
-          f << x << ' ' << y << ' ' << counter << endl;
-          for (int i = 0; i < xy; i++)
-          {
-            f << r [i] << ' ';
-          }
-
-          f << endl;
-
-          for (int i = 0; i < xy; i++)
-          {
-            f << g [i] << ' ';
-          }
-
-          f << endl;
-
-          for (int i = 0; i < xy; i++)
-          {
-            f << b [i] << ' ';
-          }
-          f << endl << it_p_color << endl;
-          cout << "done." << endl;
-        } else
-        {
-          cout << "Error: couldn't open autosave file." << endl;
-        }
-        f.close ();
-      }
-    }
-
-
-    if (counter >= xy && !stop)
-    {
-      cout << "Program finished." << endl;
-      stop = true;
-      goto program_end;
     } else
     {
-      if (r[counter] >= 255.0)
+
+
+      if (how_fast && !stop)
       {
-        r[counter] = 0.0;
-        if (g[counter] >= 255.0)
+        if (SDL_GetTicks () - begin_tick >= 1000)
         {
-          g[counter] = 0.0;
-          if (b[counter] >= 255.0)
+          std::cout << "Iterations per last second: " << how_fast_count << std::endl;
+          //fflush (stdout);
+          begin_tick = SDL_GetTicks ();
+          how_fast_count = 0;
+
+        } else
+        {
+          how_fast_count += 1;
+        }
+      }
+
+
+
+      if (autosave && !stop)
+      {
+        if ((SDL_GetTicks () - autosave_tick) >= 60000)
+        {
+          std::cout << "Autosaving... ";
+          fflush (stdout);
+
+          switch
+          (
+            save
+            (
+              auto_path.c_str (),
+              x,
+              y,
+              xy,
+              counter,
+              it_p_color,
+              r,
+              g,
+              b
+            )
+          )
           {
-            b[counter] = 0.0;
-            counter += 1;
+            case 'f':
+              std::cout << "Error: couldn't open autosave file.\n";
+              break;
+
+
+            case 'n':
+              std::cout << "done.\n";
+              break;
+          }
+          autosave_tick = SDL_GetTicks ();
+        }
+      }
+
+
+      if (counter >= xy && !stop)
+      {
+        std::cout << "Program finished.\n";
+        stop = true;
+
+      } else
+      {
+        if (r[counter] >= 255.0)
+        {
+          r[counter] = 0.0;
+          if (g[counter] >= 255.0)
+          {
+            g[counter] = 0.0;
+            if (b[counter] >= 255.0)
+            {
+              b[counter] = 0.0;
+              counter += 1;
+            } else
+            {
+              b[counter] += step;
+              counter = 0.0;
+            }
           } else
           {
-            b[counter] += step;
-            counter = 0.0;
+            g[counter] += step;
+            counter = 0;
           }
         } else
         {
-          g[counter] += step;
+          r[counter] += step;
           counter = 0;
         }
-      } else
-      {
-        r[counter] += step;
-        counter = 0;
-      }
-    }
 
-      color = SDL_MapRGB (Surface->format, int (r[counter]), int (g[counter]), int (b[counter]));
-      SDL_LockSurface (Surface);
-      putpixel (Surface, (counter % x), (counter / x), color);
-      SDL_UnlockSurface (Surface);
-      if (update)
-      {
-        SDL_UpdateWindowSurface (MainWindow);
-      }
 
-    if (debug)
-    {
-      for (int i = 0; i < xy; i++)
-      {
-        debug_f << r[i] << "  ";
-      }
+        if (mlock)
+        {
+          SDL_LockSurface (Surface);
+        }
 
-      debug_f << endl;
+        color = SDL_MapRGB (Surface->format, r[counter], g[counter], b[counter]);
+        putpixel (Surface, (counter % x), (counter / x), color);
 
-      for (int i = 0; i < xy; i++)
-      {
-        debug_f << g[i] << "  ";
+        if (mlock)
+        {
+          SDL_UnlockSurface (Surface);
+        }
+
+
+        if (update)
+        {
+          SDL_UpdateWindowSurface (MainWindow);
+        }
       }
 
-      debug_f << endl;
-
-      for (int i = 0; i < xy; i++)
-      {
-        debug_f << b[i] << "  ";
-      }
-
-      debug_f << endl << counter << endl << endl << endl;
     }
   }
+//end of while (!stop)
 
 
-  r.resize (0);
-  g.resize (0);
-  b.resize (0);
+
+
+
+  free (r);
+  free (g);
+  free (b);
+
+
   Uint32 worked_for = SDL_GetTicks ();
+
   SDL_DestroyWindow (MainWindow);
   SDL_Quit ();
-  if (debug)
-  {
-    debug_f.close ();
-  }
-  cout << "done." << endl;
 
-  int days = 0, hours = 0, minutes = 0, seconds = 0;
 
-  cout << "Program worked for";
+
+  std::cout << "done.\n";
+
+  Uint32 days = 0, hours = 0, minutes = 0, seconds = 0;
+
+  std::cout << "Program worked for";
 
 
   seconds = worked_for / 1000;
@@ -515,16 +505,16 @@ int main (int argc, char** argv)
 
   if (days)
   {
-    cout << ' ' << days << 'd';
+    std::cout << ' ' << days << 'd';
   }
   if (hours)
   {
-    cout << ' ' << hours << 'h';
+    std::cout << ' ' << hours << 'h';
   }
   if (minutes)
   {
-    cout << ' ' << minutes << 'm';
+    std::cout << ' ' << minutes << 'm';
   }
-  cout << ' ' << seconds << 's' << endl;
+  std::cout << ' ' << seconds << "s\n";
   return 0;
 }
